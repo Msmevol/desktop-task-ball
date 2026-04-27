@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { nanoid } from 'nanoid'
 import { dialog } from 'electron'
+import treeKill from 'tree-kill'
 import { paths } from './paths'
 import { TasksRepo, RunsRepo, NotificationsRepo, SettingsRepo } from './db'
 import { renderTemplate } from './prompt'
@@ -224,7 +225,13 @@ async function spawnAndWait(
     const timer = setTimeout(() => {
       timedOut = true
       try {
-        child.kill('SIGKILL')
+        if (child.pid) {
+          treeKill(child.pid, 'SIGKILL', (err) => {
+            if (err) runtimeLog.warn('tree_kill_err', { pid: child.pid, error: String(err) })
+          })
+        } else {
+          child.kill('SIGKILL')
+        }
       } catch {
         /* ignore */
       }
@@ -264,21 +271,30 @@ async function spawnAndWait(
  */
 class RunLogger {
   private readonly logPath: string
+  private queue: Promise<void> = Promise.resolve()
+
   constructor(logPath: string) {
     this.logPath = logPath
     fs.writeFileSync(this.logPath, '')
   }
+
+  private append(text: string) {
+    this.queue = this.queue
+      .then(() => fs.promises.appendFile(this.logPath, text))
+      .catch(e => runtimeLog.error('log_write_err', { error: String(e) }))
+  }
+
   section(title: string): void {
     const ts = new Date().toISOString()
-    fs.appendFileSync(this.logPath, `\n[${ts}] === ${title} ===\n`)
+    this.append(`\n[${ts}] === ${title} ===\n`)
   }
   kv(key: string, value: unknown): void {
     const line = `${key.padEnd(16)}${fmt(value)}\n`
-    fs.appendFileSync(this.logPath, line)
+    this.append(line)
   }
   raw(text: string): void {
-    fs.appendFileSync(this.logPath, text)
-    if (!text.endsWith('\n')) fs.appendFileSync(this.logPath, '\n')
+    this.append(text)
+    if (!text.endsWith('\n')) this.append('\n')
   }
 }
 
@@ -445,7 +461,13 @@ export function cancelRun(runId: string): { cancelled: boolean; message: string 
   }
   active.cancelRequested = true
   try {
-    active.child.kill('SIGKILL')
+    if (active.child.pid) {
+      treeKill(active.child.pid, 'SIGKILL', (err) => {
+        if (err) runtimeLog.warn('tree_kill_err', { pid: active.child.pid, error: String(err) })
+      })
+    } else {
+      active.child.kill('SIGKILL')
+    }
   } catch {
     // ignore kill race
   }
