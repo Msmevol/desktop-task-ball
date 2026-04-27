@@ -1,0 +1,9 @@
+{
+  "port": 8787,
+  "rootDir": "../tasks",
+  "allowedIps": ["127.0.0.1", "::1"],
+  "openaiBaseUrl": "https://api.openai.com/v1",
+  "openaiApiKey": "YOUR_API_KEY",
+  "openaiModel": "gpt-4o-mini",
+  "openaiTimeoutSec": 20
+}

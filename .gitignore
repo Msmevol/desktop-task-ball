@@ -1,0 +1,9 @@
+node_modules/
+out/
+data/
+dist/
+*.log
+.DS_Store
+.vscode/
+tasks/hostscan_start_1.py
+tasks/hostscan_start.py

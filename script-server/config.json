@@ -1,0 +1,12 @@
+{
+  "port": 8790,
+  "rootDir": "../tasks",
+  "allowedIps": [
+    "127.0.0.1",
+    "::1"
+  ],
+  "openaiBaseUrl": "",
+  "openaiApiKey": "",
+  "openaiModel": "",
+  "openaiTimeoutSec": 20
+}
