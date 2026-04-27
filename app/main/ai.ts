@@ -398,7 +398,7 @@ function normalizeAiResult(obj: Record<string, unknown>): AiResult {
 /** 严格解析 AI 返回 JSON。只接受纯 JSON 或 fenced JSON。 */
 export function parseAiJson(raw: string, expectedRunId?: string): AiResult {
   let s = raw.trim()
-  const fenceMatch = s.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
+  const fenceMatch = s.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
   if (fenceMatch) s = fenceMatch[1].trim()
 
   let obj: Record<string, unknown>

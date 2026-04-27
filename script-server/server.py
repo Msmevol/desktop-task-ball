@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -302,7 +303,8 @@ app = FastAPI()
 
 @app.middleware("http")
 async def whitelist_ip(request: Request, call_next):
-    client_host = normalize_ip(request.client.host if request.client else "")
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
+    client_host = normalize_ip(client_ip.split(",")[0].strip())
     if client_host not in CONFIG.allowed_ips:
         return JSONResponse(status_code=403, content={"error": "forbidden: ip not in whitelist"})
     return await call_next(request)
@@ -316,6 +318,7 @@ async def http_exception_handler(_: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def all_exception_handler(_: Request, exc: Exception):
+    traceback.print_exc()
     return JSONResponse(status_code=500, content={"error": str(exc)})
 
 
@@ -335,7 +338,7 @@ async def api_scripts():
 
 
 @app.get("/api/scripts/download")
-async def api_scripts_download(fileName: str):
+def api_scripts_download(fileName: str):
     try:
         abs_path = safe_path(fileName)
     except ValueError as exc:
@@ -346,7 +349,7 @@ async def api_scripts_download(fileName: str):
 
 
 @app.post("/api/scripts/upload")
-async def api_scripts_upload(body: UploadBody):
+def api_scripts_upload(body: UploadBody):
     try:
         file_name = safe_name(body.fileName)
     except ValueError as exc:

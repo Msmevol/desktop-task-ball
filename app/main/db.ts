@@ -206,12 +206,33 @@ function scheduleSave(): void {
   saveTimer = setTimeout(() => saveNow(), 300)
 }
 
+let isSaving = false
+let pendingSave = false
+
 export function saveNow(): void {
   if (!sqljsDb) return
-  const data = sqljsDb.export()
-  const tmp = dbFilePath + '.tmp'
-  fs.writeFileSync(tmp, Buffer.from(data))
-  fs.renameSync(tmp, dbFilePath)
+  if (isSaving) {
+    pendingSave = true
+    return
+  }
+  isSaving = true
+  try {
+    const data = sqljsDb.export()
+    const tmp = dbFilePath + '.tmp'
+    fs.promises.writeFile(tmp, Buffer.from(data))
+      .then(() => fs.promises.rename(tmp, dbFilePath))
+      .catch(err => console.error('DB async save failed:', err))
+      .finally(() => {
+        isSaving = false
+        if (pendingSave) {
+          pendingSave = false
+          scheduleSave()
+        }
+      })
+  } catch (err) {
+    console.error('DB export failed:', err)
+    isSaving = false
+  }
 }
 
 export function closeDb(): void {
@@ -219,7 +240,16 @@ export function closeDb(): void {
     clearTimeout(saveTimer)
     saveTimer = null
   }
-  saveNow()
+  if (sqljsDb) {
+    try {
+      const data = sqljsDb.export()
+      const tmp = dbFilePath + '.tmp'
+      fs.writeFileSync(tmp, Buffer.from(data))
+      fs.renameSync(tmp, dbFilePath)
+    } catch (e) {
+      console.error('Sync save in closeDb failed:', e)
+    }
+  }
   sqljsDb?.close()
   sqljsDb = null
 }
